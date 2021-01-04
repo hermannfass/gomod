@@ -1,13 +1,11 @@
 package lineends
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"io"
 	"bufio"
 )
-
 
 // Read data from a file (path to file as argument)
 // or from a pipe (empty string as argument).
@@ -24,9 +22,8 @@ func ReadData(fn string) string {
 		r = bufio.NewReader(f)
 	}
 	for {
-		in, _, err := r.ReadRune() // Not using width (byte count)  of rune
+		in, _, err := r.ReadRune() // Not using width (byte count) of rune
 		if err == io.EOF {
-			fmt.Println("EOF was here")
 			break
 		} else if err != nil {
 			log.Fatal(err)  // calls os.Exit(1)
@@ -45,13 +42,11 @@ func WriteData(fn string, data string) {
 		}
 		defer f.Close()
 		w = bufio.NewWriter(f)
-		fmt.Println("Writer set to file", fn)
 	}
 	defer w.Flush()
-	n, err := w.WriteString(data)
+	_, err := w.WriteString(data) // Not using number of bytes written
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%d bytes written\n", n)
 }
 
