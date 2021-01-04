@@ -1,3 +1,3 @@
-module github.com/hermannfass/modlib
+module github.com/hermannfass/gomod
 
 go 1.15
