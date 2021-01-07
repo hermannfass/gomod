@@ -1,7 +1,5 @@
 package textboxes
 
-const bw int = 76  // box width, i.e. text width all inclusive to be used
-
 type style struct {
 	h string // Horizontal line
 	v string // Vertical line
