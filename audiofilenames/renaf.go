@@ -6,7 +6,6 @@ import(
 	"os"
 	"bufio"
 	"strings"
-	"regexp"
 	"path/filepath"
 	"flag"
 )
@@ -48,7 +47,7 @@ func main() {
 		fmt.Println("Track config file", confPath, "does not exist.")
 		os.Exit(1)
 	}
-	instr, ierr := numToInstr(confPath) // read track conf into map
+	ids, ierr := assignIDs(confPath) // read track conf into map
 	if ierr != nil {
 		fmt.Println("Could not evaluate the Track Configuratin File.")
 		os.Exit(1)
@@ -56,7 +55,7 @@ func main() {
 
 	// Rename files
 	// ------------
-	oldfn, newfn, derr  := fnForRen(trackPath, instr)
+	newfns, derr  := newFilenames(trackPath, ids)
 	if (derr != nil) {
 		log.Fatal("Problem reading files at %s.\n", derr)
 	}
@@ -64,7 +63,7 @@ func main() {
 	if *fFlag {
 		proceed = true
 	} else {
-		blessed, berr := blessing(trackPath, oldfn, newfn)
+		blessed, berr := blessing(trackPath, newfns)
 		if berr != nil {
 			log.Fatal("Problem getting blessing to proceed.\n", berr)
 		}
@@ -76,8 +75,7 @@ func main() {
 		}
 	} 
 	if proceed {
-		for i, ofn := range oldfn {
-			nfn := newfn[i]
+		for ofn, nfn  := range newfns {
 			ofp := filepath.Join(trackPath, ofn)
 			nfp := filepath.Join(trackPath, nfn)
 			rerr := os.Rename(ofp, nfp)
@@ -92,13 +90,13 @@ func main() {
 }
 
 // Confirm that we want to proceed
-func blessing(tp string, oldfn []string, newfn []string) (bool, error) {
-	fmt.Printf("%d files to rename in \"%s\".\n", len(oldfn), tp)
-	if len(oldfn) == 0 {
+func blessing(tp string, newfns map[string]string) (bool, error) {
+	fmt.Printf("%d files to rename in \"%s\".\n", len(newfns), tp)
+	if len(newfns) == 0 {
 		return false, nil
 	}
-	for i, f := range(oldfn) {
-		fmt.Printf("%20s ==> %-20s\n", f, newfn[i])
+	for old, new := range(newfns) {
+		fmt.Printf("%20s ==> %-20s\n", old, new) 
 	}
 	fmt.Print("Do you want to rename those? [Y/n] ")
 	r := bufio.NewReader(os.Stdin)
@@ -115,47 +113,43 @@ func blessing(tp string, oldfn []string, newfn []string) (bool, error) {
 }
 
 
-// Return a hash with names of all fiels to be renamed
-// and a hash with new filenames for those files, calculated
-// from the track configuration in the instr map.
-func fnForRen(path string, instr map[string]string) ([]string, []string, error) {
+// Return a map with names of all files to be renamed (key) and their 
+// new filenames (value). Returns an error if it occurs.
+func newFilenames(path string, ids map[string]string) (map[string]string, error) {
 	trackfiles, derr := os.ReadDir(path)
 	if derr != nil {
-		return nil, nil, derr
+		return nil, derr
 	}
-	re := regexp.MustCompile(`\d+`)
-	var oldNames []string
-	var newNames []string
+	newfns := map[string]string{}  // New filenames; result of this function
 	for _, trkf := range trackfiles {
 		ofn := trkf.Name()  // Old filename
+		ext := filepath.Ext(ofn)
 		// Skip directories:
 		if trkf.IsDir() {
 			fmt.Printf("Skipping %s: It is a directory.\n", ofn) 
 			continue
 		}
-		// Skip files with no number in the filename:
-		num := re.FindString(ofn)
-		if num == "" {
-			fmt.Printf("Skipping %s: No number in filename.\n", ofn) 
+		// See if the filename contains an ID and skip if it does not:
+		nlabel := ""
+		for instr, id := range ids {
+			if strings.Contains(ofn, id) {
+				nlabel = instr
+			}
+		}
+		if nlabel == "" {
+			fmt.Printf("Skipping %s: Contains no ID element\n", ofn)
 			continue
 		}
-		// Skip files with no label defined in track configuration:
-		label, ok := instr[num]
-		if !ok {
-			fmt.Printf("Skipping %s: No label for track %s.\n", ofn, num)
-			continue
-		}
-		// The file should get renamed.
-		ext := filepath.Ext(ofn)  // File extension (usually ".WAV")
-		nfn := label + ext
-		oldNames = append(oldNames, ofn)
-		newNames = append(newNames, nfn)
+		// The file should get renamed. => Add it to the newNames map:
+		nfn := nlabel + ext
+		newfns[ofn] = nfn
 	}
-	return oldNames, newNames, nil
+	return newfns, nil
 }
 
 // Read labels from config file into instr map
-func numToInstr(path string) (map[string]string, error) {
+// func numToInstr(path string) (map[string]string, error) {
+func assignIDs(path string) (map[string]string, error) {
 	cf, ferr := os.Open(path)
 	if (ferr != nil) {
 		fmt.Printf("Could not open track configuration file %s.", path)
@@ -164,17 +158,16 @@ func numToInstr(path string) (map[string]string, error) {
 	defer cf.Close()
 	scanner := bufio.NewScanner(cf)
 	// No need to call scanner.Split(<func>) as ScanLines is default.
-	instr := map[string]string{}
+	ids := map[string]string{}  // Return value of this function
 	for scanner.Scan() {
 		cols := strings.Fields(scanner.Text())
 		if len(cols) > 1 {
-			// fmt.Printf("Fields: %q\n", cols)
-			instr[cols[0]] = cols[1]
+			ids[cols[1]] = cols[0]
 		} else {
 			// fmt.Printf("Skipping line: %s\n", scanner.Text())
 		}
 	}
-	return instr, nil
+	return ids, nil
 }
 
 // Determine default configuration path
@@ -192,15 +185,19 @@ func checkDefConfPath() (string, error) {
 // Usage Text
 func usageText() string {
 	return `
-RENAF - Rename Audio Files
+┌────────────────────────────────────────┐
+│  RENAF - Rename Audio Recording Files  │
+└────────────────────────────────────────┘
 
 PURPOSE
-Rename files in a directory according to a translation table specified
-in a configuration file. The original use case for this is related to
-naming numbered audio files from a Digital Audio Workstation. Filenames
-there might look like "TRACK01.WAV", "TRACK02.WAV" etc. and the audio
-engineer might want to see filenames like "Voice_Janis.WAV",
-"Bassdrum.WAV" etc.
+Rename files in a directory according to a configuration table.
+The configuration table is a list of identifiers (expected to be
+present in a current filename) and their corresponding labels (that
+will be used in the new filename). Filename extensions are preserved.
+The original use case for this is naming numbered audio files from
+Digital Audio Workstation. Filenames like "TRACK01.WAV", "TRACK02.WAV"
+etc. get translated to person or instrument names that tell something
+about the content, e.g. "Voice_Janis.WAV" or "Bassdrum.WAV" etc.
 
 CALL
   renaf [-f] [-c path/to/track.conf] dir/with/files/to/rename",
