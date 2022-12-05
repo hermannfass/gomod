@@ -33,6 +33,7 @@ func main() {
 	var trackPath string
 	if len(flag.Args()) == 0 {
 		fmt.Println("You did not specify a target directory as parameter.")
+		fmt.Println("Call `" + os.Args[0] + " -h` for usage instructions.")
 		os.Exit(1)
 	} else if _, tperr := os.Stat(flag.Args()[0]); os.IsNotExist(tperr) {
 		fmt.Printf("The path %s does not exist.\n", flag.Args()[0])
