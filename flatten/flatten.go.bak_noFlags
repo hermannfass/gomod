@@ -11,19 +11,14 @@ import(
 )
 
 // Separator between individual path elements of filenames:
-// const pathSep string = "--"  // To do: This should be configurable
-var pathSep string
+const pathSep string = "--"  // To do: This should be configurable
 
 func main() {
 	flag.Usage = func() {
 		fmt.Println(usageText())
-		flag.PrintDefaults()
 	} 
-	pathSepFlag := flag.String("s", "--", "Path separator in output filenames")
 	flag.Parse()
-	pathSep = *pathSepFlag
 	topdir := flag.Arg(0)
-	fmt.Println("Topdir:", topdir)
 	var outdir string
 	if flag.NArg() > 1 {
 		outdir = flag.Arg(1)
@@ -94,7 +89,7 @@ Tool for copying files from a directory tree to one single directory
 and prepending the directory names into the individual file names.
 
 CALL
-   flatten [-s <filename-separator>] <top-directory> <target-directory>
+   flatten <top-directory> <target-directory>
 
 `
 }
