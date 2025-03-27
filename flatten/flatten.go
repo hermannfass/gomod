@@ -12,7 +12,6 @@ import(
 )
 
 var verbose bool   // Extra messages on actions taken
-// var pathSep string // Not really needed globally: arg to flatten()
 
 func main() {
 	flag.Usage = func() {
@@ -214,7 +213,6 @@ and note there are also empty folders included:
        |   |   |--eating.jpg
        |   |   \--sleeping.jpg
        |   \--Jack
-       |       |--logo.png
        |       |--sofanap.jpg
        |       |--riverboat.jpg
        |       \--chasing_mouse.tiff
@@ -240,7 +238,7 @@ by default the top directory (here Documents/photos) under new names,
 which incorporate the previous path. The files would be named:
 photos_cats_Molly_seasick.jpg
 photos_cats_Molly_eating.jpg
-photos_-ats_Molly_sleeping.jpg
+photos_cats_Molly_sleeping.jpg
 photos_cats_Jack_logo.png
 ...
 photos_dogs_Sugar_Holidays2020_Luxembourg_City_On_Palais_lawn.jpg
@@ -265,6 +263,10 @@ PARAMETERS
    With this flag set, you will see additional messages while the
    programme is running, e.g. which files get renamed etc. 
 
+Testing:
+Create and populate a directory ./testfiles 
+(tool creattestfiles.pl will do that for you).
+Call: flatten ./testfiles ./testresults
 `
 
 }
