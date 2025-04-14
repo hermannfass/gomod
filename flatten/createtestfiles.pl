@@ -1,18 +1,17 @@
-#!/Users/herm/bin/perl5401
+#!/usr/bin/env perl
 
-use 5.40.1;
+use 5.010;
 use utf8;
-use Data::Dumper;
 use File::Spec;
 
 say "Running Perl5 version $^V";
 
 my $top_path = './testfiles';
-my $levels_to_do = 2;
-my @dir_names = ('A'..'C');
+my $levels_to_do = 3;
+my @dir_names = ('A'..'D');
 
 unless (-d $top_path) {
-	say "Directory $top_path does not exist. Trying to create it.";
+	say "Directory $top_path gets created.";
 	mkdir($top_path, 0755) or die "Cannot create $top_path. $!";
 }
 
