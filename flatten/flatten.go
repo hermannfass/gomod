@@ -7,111 +7,108 @@ import(
 	"os"
 	"path/filepath"
 	"io"
+	"io/fs"
 	"strings"
 	"errors"
 )
-
-var verbose bool   // Extra messages on actions taken
 
 func main() {
 	flag.Usage = func() {
 		fmt.Println(usageText()) // No extra flag.PrintDefaults()
 	}
 	pathSepPtr := flag.String("sep", "_", "Path separator in output filenames")
-	verbosePtr := flag.Bool("v", false, "Verbose messages during execution")
-	silentPtr  := flag.Bool("s", false, "Silent mode - all output supporessed")
 	flag.Parse()
 	pathSep := *pathSepPtr
-	verbose := *verbosePtr
-	silent  := *silentPtr
 
-	if verbose { fmt.Println("Verbose mode") }
-	topdir, err := getTopDir(flag.Args(), silent)
+	topdir, err := getTopDir(flag.Args())
 	if err != nil {
-		if ! silent { fmt.Println("Stopping here") }
+		fmt.Println("Aborting.", err)
 		os.Exit(0)
-	} else if ! silent {
-		fmt.Printf("Top directory for flattening: %s\n", topdir)
+	} else if topdir == "" {
+		fmt.Println("No directory to flatten, thus stopping here.")
+		os.Exit(0)
 	}
 
-	outdir, err := getOutDir(topdir, flag.Args(), silent)
-	if err == nil {
-		if (verbose) {
-			fmt.Println("Equivalent start prefix:     ", pathToPrefix(topdir))
-			fmt.Println("Output directory:            ", outdir)
-			fmt.Println("Path separator in new files: ", pathSep)
-			fmt.Print(  "Is it ok to go ahead?  ")
-			if (! answer()) {
-				fmt.Println("=> Exiting")
-				os.Exit(0)
+	outdir, err := getOutDir(topdir, flag.Args())
+	if err != nil {
+		fmt.Printf("Could not determine output directory. %s\n", err)
+		os.Exit(0)
+	} else if outdir == "" {
+		fmt.Println("No output directory specified/accepted. Aborting.")
+		os.Exit(0)
+	}
+	fmt.Println("Equivalent start prefix:     ", pathToPrefix(topdir))
+	fmt.Println("Output directory:            ", outdir)
+	fmt.Println("Path separator in new files: ", pathSep)
+	fmt.Print(  "Is it ok to go ahead?  ")
+	if (! answer()) {
+		fmt.Println("=> Exiting")
+		os.Exit(0)
+	}
+	flatten(topdir, pathToPrefix(topdir), outdir, pathSep)
+	fmt.Println("Done")
+}
+
+func getTopDir(args []string) (string, error) {
+	if len(args) < 1 {
+		fmt.Println("No directory (argument 1) specified.")
+		fmt.Println("Checking the current working directory.")
+		r, err := os.Getwd()
+		if err != nil {
+			return "", fmt.Errorf("Error determining working directory. %w", err)
+		} else {
+			fmt.Printf("Working directory is: %q.\n", r)
+			fmt.Print("Do you want to flatten that?")
+			if answer() {
+				return r, nil
+			} else {
+				return "", nil
 			}
 		}
-		flatten(topdir, pathToPrefix(topdir), outdir, pathSep)
-		if ! silent { fmt.Println("Done") }
 	} else {
-		fmt.Println("Ok, then we stop here.", err)
-		os.Exit(0)
+		ok, err := existsAndIsDir(args[0])
+		if err != nil {
+			return "", err
+		} else if ok {
+			return args[0], nil
+		} else {
+			return "", nil
+		}
 	}
 }
 
-func getOutDir(topdir string, args []string, silent bool) (string, error)  {
-	var r string
-	if len(args) > 1 {
-		// User specified an output directory (argument 2).
-		r = args[1]
-	} else if silent {
-		return "", errors.New("No output directory specified.")
-	} else {
-		// User did not specify an output directory.
-		// As we are not in silent mode:
-		//    - Ask to use top directory (wherever it comes from)
-		//    - If not accepted, return an "error" message.
+
+func getOutDir(topdir string, args []string) (string, error)  {
+	if len(args) < 2 {
 		fmt.Println("No output directory specified.")
-		fmt.Printf("Should the output go to %s?", topdir)
+		fmt.Printf("Should the output go to %q?", topdir)
 		if answer() {
-			r = topdir
+			return topdir, nil
 		} else {
-			return "", errors.New("Cannot write to nirvana.")
+			return "", nil
+		}
+	} else {
+		ok, err := existsAndIsDir(args[1])
+		if ok {
+			return args[1], nil
+		} else {
+			return "", err
 		}
 	}
-	return r, nil
 } 
 
-func getTopDir(args []string, silent bool) (string, error) {
-	var r string
-	if len(args) < 1 {
-		if silent {
-			return "", fmt.Errorf("Called without a top directory.")
-		} else {
-			fmt.Println("No top directory specified when calling.")
-			fmt.Println("Picking current working directory.")
-			r, err := os.Getwd()
-			if err != nil {
-				fmt.Println("Could not determine working directory.")
-				return "", err
-			} else {
-				fmt.Printf("Working directory is: %q.\n", r)
-				fmt.Print("Do you want to flatten that?")
-				if answer() {
-					return r, nil
-				} else {
-					return "", fmt.Errorf("Ok, no. So we flatten nothing.")
-				}
-			}
-		}
+func existsAndIsDir(path string) (bool, error) {
+	info, err := os.Stat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return false, fmt.Errorf("Directory %q does not exist. %w", path, err)
+	} else if ! info.IsDir() {
+		return false, fmt.Errorf("%q is not a directory.", path)
 	} else {
-		r = args[0]
-		_, err := os.Stat(r)  // Don't need the file information
-		if os.IsNotExist(err) {
-			if ! silent {
-				fmt.Printf("You want to flatten %q but that seems not to exist.\n", r)
-			}
-			return "", fmt.Errorf("%q seems not to exist. %s", r, err)
-		} else {
-			return r, nil
-		}
+		return true, nil
 	}
 }
+	
+
 
 // Asks the user for a Y/N answer; return true if Y or y, or false.
 func answer() bool {
@@ -127,40 +124,46 @@ func answer() bool {
 	return yn
 }
 
-func flatten(dir string, prefix string, outdir string, sep string) {
-	if verbose {
-		fmt.Printf("Directory %s\n  => Prefix %s\n", dir, prefix)
-	}
-	entries, err := os.ReadDir(dir)
-	if (err != nil) {
-		fmt.Printf("Error reading directory %q.\n", dir)
-		return
-	}
-	for _, fi := range entries {
-		if fi.IsDir() {
-			newpre := prefix + sep + fi.Name()
-			from := filepath.Join(dir, fi.Name()) 
-			flatten(from, newpre, outdir, sep)
-		} else {
-			// new file name with directory information included
-			newfn := prefix + sep + fi.Name()
-			// full path of the new (renamed) file:
-			oldpath := filepath.Join(dir, fi.Name())
-			newpath := filepath.Join(outdir, newfn)
-			// fmt.Println("prefix: ", prefix)
-			// fmt.Println("newpath: ", newpath)
-			if verbose {
-				fmt.Printf("  Copying file %s\n", fi.Name())
-				fmt.Printf("    to %s\n", newpath)
-			}
-			// fmt.Println("copy", oldpath, "to", newpath)
-			b := filecopy(oldpath, newpath)
-			if verbose { fmt.Printf("    %d bytes written\n", b) }
+func flatten(dir string, prefix string, outdir string, partSep string) error {
+	flatfunc := func(path string, info fs.DirEntry, err error) error {
+		if (err != nil) {
+			fmt.Printf("Error %v at path %q.", err, path)
 		}
+		if ! info.IsDir() {
+			relPath, err := filepath.Rel(dir, path)
+			if err != nil {
+				fmt.Println("Cannot determine relative path.")
+			} else {
+				parts := splitPath(relPath) 
+				newName := strings.Join(parts, partSep)
+				oldPath := path // To do: This deems incorrect
+				newPath := filepath.Join(outdir, newName)
+				// b := copyFile(oldPath, newPath)
+				// fmt.Printf("Copied %q to %q (%d bytes)\n", oldPath, newPath, b)
+				copyFile(oldPath, newPath)
+			}
+		}
+		return err
 	}
+	err2 := filepath.WalkDir(dir, flatfunc)
+	return err2
 }
 
-func filecopy(from, to string) int64 {
+func splitPath(path string) []string {
+	sep := filepath.Join("a","b")[1]
+	return strings.Split(filepath.Clean(path), string(sep))
+}
+
+func reverseStrings(original []string) []string {
+	l := len(original)
+	reversed := make([]string, l)
+	for i:=0; i<l; i++ {
+		reversed[i] = original[l-1-i]
+	}
+	return reversed
+}
+
+func copyFile(from, to string) int64 {
 	fdFrom, err := os.Open(from)
 	if err != nil {
 		log.Fatal(err)
@@ -181,7 +184,6 @@ func filecopy(from, to string) int64 {
 
 func pathToPrefix(p string) string {
 	r := filepath.Base(p)
-	// fmt.Println("pathToPrefix returns:", r)
 	return(r)
 }
 
@@ -211,25 +213,16 @@ and note there are also empty folders included:
        |   |--Molly
        |   |   |--seasick.jpg
        |   |   |--eating.jpg
-       |   |   \--sleeping.jpg
+       |   |   \--Molly-sleeps-on-balcony.jpg
        |   \--Jack
        |       |--sofanap.jpg
        |       |--riverboat.jpg
        |       \--chasing_mouse.tiff
        \--dogs
-           |--Lassie
-           |   |--Movie_Screenshots
-           |   |   |--race2024.jpg
-           |   |   \--trailerstart2024.jpg
-           |   |--Images_2025
-           |   \--Images_2026
-           \--Sugar
-               |--Holidays2020
-                   |--Canada
-                   |--Luxembourg
-                       |--City
-                           |--On_Palais_lawn.jpg
-                           \--Jumping_from_bridge.jpg
+           \--Lassie
+               |--portrait.jpg
+               |--Lassie20250115.jpg
+               \--Lassie-Drawing.png
 
 Call: flatten Documents/photos 
 
@@ -238,11 +231,12 @@ by default the top directory (here Documents/photos) under new names,
 which incorporate the previous path. The files would be named:
 photos_cats_Molly_seasick.jpg
 photos_cats_Molly_eating.jpg
-photos_cats_Molly_sleeping.jpg
-photos_cats_Jack_logo.png
+photos_cats_Molly_Molly-sleeps-on-balcony.jpg
+photos_cats_Jack_sofanap.jpg
 ...
-photos_dogs_Sugar_Holidays2020_Luxembourg_City_On_Palais_lawn.jpg
-photos_dogs_Sugar_Holidays2020_Luxembourg_City_Jumping_from_bridge.jpg
+photos_dogs_Lassie_portrait.jpg
+photos_dogs_Lassie20250115.jpg
+photos_dogs_Lassie-Drawing.png
 
 PARAMETERS
 
@@ -265,8 +259,10 @@ PARAMETERS
 
 Testing:
 Create and populate a directory ./testfiles 
-(tool creattestfiles.pl will do that for you).
-Call: flatten ./testfiles ./testresults
+(Launching creattestfiles.pl will do that for you.)
+Then call the following to flatten the directory structure under
+./testfiles into the directory ./testresults :
+flatten ./testfiles ./testresults
 `
 
 }

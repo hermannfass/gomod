@@ -7,8 +7,8 @@ use File::Spec;
 say "Running Perl5 version $^V";
 
 my $top_path = './testfiles';
-my $levels_to_do = 3;
-my @dir_names = ('A'..'D');
+my $levels_to_do = 2;
+my @dir_names = ('A'..'B');
 
 unless (-d $top_path) {
 	say "Directory $top_path gets created.";
