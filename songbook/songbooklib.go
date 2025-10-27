@@ -85,6 +85,7 @@ func okForAbcList(fn string) bool {
 // pdNames, located in the folder pdPath, into one PDF file that
 // will be available at outPath.
 func MergePdfFiles(pdPath string, pdNames []string, outPath string) {
+	fmt.Println("Merging files")
 	var pdps []string // PD Paths to combine
 	for _, n := range pdNames {
 		p := filepath.Join(pdPath, n)
@@ -156,6 +157,10 @@ func GetAllPdNames(path string) []string {
 	}
 	for _, de := range des { 
 		fn := de.Name()
+		if de.IsDir() {
+			fmt.Printf("Ignoring subdirectory: %s\n", fn)
+			continue
+		}
 		if re.MatchString(fn) {
 			fns = append(fns, fn)
 		} else { 
