@@ -132,8 +132,9 @@ func ReadPlaylist(path string) []string {
 	scanner := bufio.NewScanner(fh)
 	var entries []string
 	for scanner.Scan() {
-		line := scanner.Text();
-		if strings.TrimSpace(line) == "" {
+		line := scanner.Text()
+		tl := strings.TrimSpace(line)
+		if ( tl == "" || strings.HasPrefix(tl, "#") ) {
 			continue
 		}
 		entries = append(entries, line)

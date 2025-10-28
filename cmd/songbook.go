@@ -9,31 +9,12 @@ import(
 	"github.com/hermannfass/gomod/songbook"
 )
 
-/* Notes for development:
-   pd stands for portable document, i.e. PDF file.
-	PDF file names to apply to best practice:
-		Only letters (A-Z, a-z), numbers (0-9), hyphen (-), underscore;
-		no non-ASCII letters (umlauts, accents, greek symbols, ...);
-		initial character is a letter (from A-Z or a-z) or a number.
-*/
+// In this code, "pd" stands for portable document (PDF file).
 
 // regexp to extract the "essence" from a song title
 // and search it in the "essence" of a PDF filename.
 // (Global, but limited to this package.)
 var essenceRE = regexp.MustCompile(`\W`)
-
-/*
-	File localization:
-		Base path (bp, absolute) default: ~/sheetmusic
-		Sub folders per project with PDs (Portable Documents)
-		Sub folder with play lists (pp), default <bp>/playlists
-		Playlist filenames: <project>-<context>[[.playlist].txt]
-		For songbook with all PDFs in alphabetical order, use
-			(instead of a filename) just: <project>-abc
-	Call examples:		
-		songbook MyBand-abc
-		songbook -p /my/pdf/folder MyBand-MyGig2025.playlist
-*/
 
 func main() {
 	flag.Usage = func() {
@@ -100,41 +81,50 @@ PURPOSE
 Combine PDF sheet music for a »Project«, that means for a band, an
 orchestra, or a specific concert, into a »Songbook«, i.e. a single
 PDF file.
-For that, all PDF files for the Project need to be in one folder,
-the »Project Folder«. The order in which the pieces are included is
-defined in a »Playlist« or by alphabet, as described in the next
-section. File organization details see further below under
+For that, all PDF files for the Project need to be in one directory,
+the »Project Folder«. A Project Folder may have subdirectories, but
+they are ignored. 
+The order in which the songs are added to a Songbook is defined
+either by a »Playlist« or by alphabet, as described in the next
+section. File organization details see further below and under
 »File Naming and Localization«.
 
 DEFINING CONTENT AND ORDER
 
 The content (which pieces) and the order can be defined two ways:
 
- a) Songbook according to a »Playlist«:
-   A Playlist is a text file that lists one piece title per line
+ a) Songbook from a »Playlist«:
+   A Playlist is a text file that lists one song title per line
    in the desired order.
-   A Playlist's filename consists of minimum two hypen separated
-   parts:
+   Filename:
+   Playlist filenames start with minimum two hypen separated parts:
    <Project>-<Context>[-...].txt
-   Context is anything that represents the purpose for this list,
-   like a specific concert, tour, or time period. This part must
-   not be empty.
-   The entry for a song does not need to match the PDF filename
-   exactly, but the title must be included in the PDF filename.
-   Spaces and non-word characters are ignored when matching PDF
-   files with playlist entries.
+   <Project> is the name of the Project (band, orchestra).
+   <Context> represents the purpose for this list, like a
+   specific concert, tour, or time period. This part must also not
+   be empty.
+   Playlist entries:
+   Just list the songs that should be included in the Songbook
+   one song per line. The entry for a song does not need to match
+   the PDF filename exactly, but the title must be included in the
+   PDF filename. Spaces and non-word characters are ignored when
+   matching PDF files with playlist entries.
+   In case you want to add comments to your Playlist (or make the
+   system temporarily ignoring individual entries in the Playlist),
+   just prepend the respective lines with a hash symbol (#).
    Example:
-   If the Playlist has an entry »The Chicken« and the Project Folder
-   contains a file named »TheChicken-JacoPastorious_liveVersion.pdf«,
+   If the Playlist contains a line »The Chicken« and the Project
+   Folder contains a file named »TheChicken-Jaco_liveVersion.pdf«,
    this file will be included in the generated PDF .
    The playlist's filename needs to start with the project name,
    followed by a hyphen (-), some Context information at your
    convenience. Add the filename suffix ".txt" or "-playlist.txt"
    makes sense.
-   Example: Assumeing one Playlist for project »CoolBand«
-            is called »CoolBand-Concert20250913.txt«
+   Example:
+   Assuming one Playlist for project »CoolBand« is called
+   »CoolBand-Concert20250913.txt«
    To create a songbook for this event, call the tool like this:
-            songbook CoolBand-Concert20250913.txt
+   songbook CoolBand-Concert20250913.txt
    This will create a PDF file called CoolBand-Concert20250913.pdf
    in the output folder (location see below under
    »File Naming and Localization«).
@@ -143,7 +133,7 @@ The content (which pieces) and the order can be defined two ways:
    If you just want all the PDF files in a project folder, instead
    of specifying a playlist, you just use the Project name followed
    by a hyphen and the three letters »abc«.
-	Example: songbook CoolBand-abc
+   Example: songbook CoolBand-abc
    This will combine all PDF files in the Project Folder »CoolBand«
    into one PDF file named »CoolBand-abc.pdf«.
 
@@ -153,13 +143,14 @@ FILE NAMING AND LOCALIZATION
    use only letters, numbers, underscores, and hyphens in folder and
    file names; no spaces, umlauts, accents, or other special letters.
 
-   Base Path
+   Base Path:
    Parent directory for all PDF files and playlists. Its default
    value is the folder called »sheetmusic« in the user's home
-   directory. You can change the default value with the respective
-   flag (see PARAMETERS below).
+   directory, so technically: ~/sheetmusic
+   You can change the default value with the respective flag
+   (see PARAMETERS below).
    
-   Project Folders
+   Project Folders:
    Under the Base Path, each Project (band, orchestra) must have a
    folder that contains the sheet music for this project, i.e. an
    individual PDF file for each piece in the repertoire of this
