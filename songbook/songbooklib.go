@@ -25,28 +25,48 @@ var essenceRE = regexp.MustCompile(`\W`)
 // SongbookByList is core function 1/2:
 // It compiles a songbook with sheet music sorted by a playlist
 // file. Parameters are the FQFN of the playlist file, the path
-// to the directory with PDF files, and the FQFN of the output file.
-// If applicable, it returns a slice of warnings or other messages.
-func SongbookByList(listPath, pdPath, outPath string) []string {
+// to the directory with PDF files, the path to the directory of
+// generic PDF files (i.e. originals not in a specific project folder),
+// and the FQFN of the output file.
+// If a title in the playlist is ambiguous, multiple files will be
+// included. If no file is found in the project folder, we look also
+// in the generic PD folder.
+// If applicable, this method returns a slice of warnings or other
+// messages.
+func SongbookByList(listPath, pdPath, genPdPath, outPath string) []string {
 	var messages []string  // Do we need it? Nothing to add?
 	var titles []string
 	var allPdNames []string = GetAllPdNames(pdPath)
-	var pdNames []string // Names of PDF files to include
+	var allGenPdNames []string = GetAllPdNames(genPdPath)
+	// var pdNames []string // Names of PDF files to include
+	var pdfPaths []string // Paths to all PDF files for the PDF songbook
 	titles = ReadPlaylist(listPath)
 	for _, t := range titles {
 		pdNamesToAdd := PdNamesForTitle(t, allPdNames)
 		if len(pdNamesToAdd) > 0 {
-			pdNames = append(pdNames, pdNamesToAdd...)
-			for _, n := range pdNamesToAdd {
-				fmt.Printf("Adding file: %s\n", n)
-			}
+			pdfPathsToAdd := filenamesToPaths(pdPath, pdNamesToAdd)
+			pdfPaths = append(pdfPaths, pdfPathsToAdd...)
 		} else {
-			messages = append(messages, "WARNING: No PDF file for " + t)
+			fmt.Printf("No PDF file for %s in project folder!\n", t)
+			genPdNamesToAdd := PdNamesForTitle(t, allGenPdNames)
+			if len(genPdNamesToAdd) > 0 {
+				fmt.Printf("Generic PDF file found for %s\n", t)
+				genPdfPathsToAdd := filenamesToPaths(genPdPath, genPdNamesToAdd)
+				pdfPaths = append(pdfPaths, genPdfPathsToAdd...)
+				messages = append(messages,
+				           fmt.Sprintf("%s: Only generic PDF file", t)) 
+			} else {
+				// Due to importance formatted to stand out:
+				messages = append(messages,
+				           fmt.Sprintf("\n=!= %s: No PDF file\n", t)) 
+			}
 		}
 	}
-	MergePdfFiles(pdPath, pdNames, outPath)
+	// MergePdfFiles(pdPath, pdNames, outPath)
+	MergePdfFiles(pdfPaths, outPath)
 	return messages
 }
+
 
 // SongbookByAbc is core function 2/2:
 // It compiles an alphabetic songbook based on a PDF path and a
@@ -64,7 +84,8 @@ func SongbookByAbc(pdPath, outPath string) []string {
 			fmt.Printf("Skipping PDF file: %s\n", fn)
 		}
 	}
-	MergePdfFiles(pdPath, pdNames, outPath)
+	pdfPaths := filenamesToPaths(pdPath, pdNames)
+	MergePdfFiles(pdfPaths, outPath)
 	return messages
 }
 
@@ -87,14 +108,9 @@ func okForAbcList(fn string) bool {
 // MergePdfFiles merges the files listed with their filenames in
 // pdNames, located in the folder pdPath, into one PDF file that
 // will be available at outPath.
-func MergePdfFiles(pdPath string, pdNames []string, outPath string) {
+func MergePdfFiles(pdfPaths []string, outPath string) {
 	fmt.Println("Merging files")
-	var pdps []string // PD Paths to combine
-	for _, n := range pdNames {
-		p := filepath.Join(pdPath, n)
-		pdps = append(pdps, p)
-	}
-	if err := api.MergeCreateFile(pdps, outPath, false, nil); err != nil {
+	if err := api.MergeCreateFile(pdfPaths, outPath, false, nil); err != nil {
 		fmt.Println("ERROR!")
 		log.Fatal(err)
 	}
@@ -188,5 +204,18 @@ func essence(s string) string {
 	n := strings.ToLower(essenceRE.ReplaceAllString(s, ""))
 	return n
 }
+
+// filenamesToPaths turns a slice of filenames into a slice of paths
+// by prepending the string dirPath, i.e. the path of the directory, to
+// each filename in the filenames slice.
+func filenamesToPaths(dirPath string, filenames []string) []string {
+	var filePaths []string
+	for _, fn := range filenames {
+		p := filepath.Join(dirPath, fn)
+		filePaths = append(filePaths, p)
+	}
+	return filePaths
+}
+		
 
 

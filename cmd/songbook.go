@@ -30,6 +30,8 @@ func main() {
 	bpFlag := flag.String("bp", defaultBasePath, "Base Path")
 	listDirFlag := flag.String("lp", "playlists",
                   "Playlist Directory (relative to Base Path)")
+	genPdDirFlag := flag.String("gendir", "Original",
+	                "Name of directory with generic PDF files")
 	flag.Parse()
 
 	bp := *bpFlag
@@ -41,6 +43,9 @@ func main() {
 
 	// Folder with the individual PDF files:
 	pdPath := filepath.Join(bp, project)
+
+	// Folder with generic PDF files:
+	genPdPath := filepath.Join(bp, *genPdDirFlag)
 
 	// Where to write the resulting songbook to:
 	outName := fmt.Sprintf("%s-%s.pdf", project, context)
@@ -59,9 +64,10 @@ func main() {
 		fmt.Printf("Reading sequence of repertoire from: %s\n", listPath)
 		fmt.Printf("Collecting respective PDF files from: %s\n", pdPath)
 		fmt.Printf("Writing new songbook to: %s\n", outPath)
-		messages = songbook.SongbookByList(listPath, pdPath, outPath)
+		messages = songbook.SongbookByList(listPath, pdPath, genPdPath, outPath)
 	}
 
+	fmt.Println("WARNINGS & IMPORTANT MESSAGES:")
 	for _, m := range messages {
 		fmt.Println(m)
 	}
@@ -81,9 +87,9 @@ PURPOSE
 Combine PDF sheet music for a »Project«, that means for a band, an
 orchestra, or a specific concert, into a »Songbook«, i.e. a single
 PDF file.
-For that, all PDF files for the Project need to be in one directory,
-the »Project Folder«. A Project Folder may have subdirectories, but
-they are ignored. 
+For that, PDF files specific to the Project need to be kept in one
+directory, called the »Project Folder«. A Project Folder may have
+subdirectories, but they are ignored. 
 The order in which the songs are added to a Songbook is defined
 either by a »Playlist« or by alphabet, as described in the next
 section. File organization details see further below and under
@@ -93,33 +99,32 @@ DEFINING CONTENT AND ORDER
 
 The content (which pieces) and the order can be defined two ways:
 
- a) Songbook from a »Playlist«:
-   A Playlist is a text file that lists one song title per line
-   in the desired order.
-   Filename:
-   Playlist filenames start with minimum two hypen separated parts:
+ a) Songbook from a »Playlist«
+   Playlist
+   is a text file that lists one song title per line in the desired
+   order. Its filename must consist of minimum two hyphen-separated
+   parts and should end with the suffix ».txt«.
    <Project>-<Context>[-...].txt
    <Project> is the name of the Project (band, orchestra).
-   <Context> represents the purpose for this list, like a
-   specific concert, tour, or time period. This part must also not
-   be empty.
+   <Context> represents the purpose for this list, like a specific
+   concert, tour, or time period. This part must also not be empty.
    Playlist entries:
-   Just list the songs that should be included in the Songbook
-   one song per line. The entry for a song does not need to match
-   the PDF filename exactly, but the title must be included in the
-   PDF filename. Spaces and non-word characters are ignored when
-   matching PDF files with playlist entries.
+   Just list the songs that should be included in the Songbook one
+   song per line. The entry for a song does not need to match the
+   PDF filename exactly, but the title must be included in the PDF
+   filename. Spaces and non-word characters are ignored when matching
+   PDF filenames with playlist entries.
+   Cross-Project PDF files:
+   If no file in the Project Folder seems to match the name of the
+   song title, the application looks for a match in a folder with
+   generic sheet music, i.e. original versions that can be used in
+   multiple Projects. If the file is taken from there, this is
+   indicated in the output of the run.
+   Comments:
    In case you want to add comments to your Playlist (or make the
    system temporarily ignoring individual entries in the Playlist),
    just prepend the respective lines with a hash symbol (#).
-   Example:
-   If the Playlist contains a line »The Chicken« and the Project
-   Folder contains a file named »TheChicken-Jaco_liveVersion.pdf«,
-   this file will be included in the generated PDF .
-   The playlist's filename needs to start with the project name,
-   followed by a hyphen (-), some Context information at your
-   convenience. Add the filename suffix ".txt" or "-playlist.txt"
-   makes sense.
+   
    Example:
    Assuming one Playlist for project »CoolBand« is called
    »CoolBand-Concert20250913.txt«
