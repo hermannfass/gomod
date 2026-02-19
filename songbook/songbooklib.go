@@ -37,6 +37,9 @@ func SongbookByList(listPath, pdPath, outPath string) []string {
 		pdNamesToAdd := PdNamesForTitle(t, allPdNames)
 		if len(pdNamesToAdd) > 0 {
 			pdNames = append(pdNames, pdNamesToAdd...)
+			for _, n := range pdNamesToAdd {
+				fmt.Printf("Adding file: %s\n", n)
+			}
 		} else {
 			messages = append(messages, "WARNING: No PDF file for " + t)
 		}
