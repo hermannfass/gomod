@@ -44,21 +44,20 @@ func SongbookByList(listPath, pdPath, genPdPath, outPath string) []string {
 	for _, t := range titles {
 		pdNamesToAdd := PdNamesForTitle(t, allPdNames)
 		if len(pdNamesToAdd) > 0 {
+			fmt.Printf("Specific PDF file(s) for %s in %s\n", t, pdPath)
 			pdfPathsToAdd := filenamesToPaths(pdPath, pdNamesToAdd)
 			pdfPaths = append(pdfPaths, pdfPathsToAdd...)
 		} else {
-			fmt.Printf("No PDF file for %s in project folder!\n", t)
 			genPdNamesToAdd := PdNamesForTitle(t, allGenPdNames)
 			if len(genPdNamesToAdd) > 0 {
-				fmt.Printf("Generic PDF file found for %s\n", t)
+				fmt.Printf("Generic PDF file(s) for %s in %s\n", t, genPdPath)
 				genPdfPathsToAdd := filenamesToPaths(genPdPath, genPdNamesToAdd)
 				pdfPaths = append(pdfPaths, genPdfPathsToAdd...)
-				messages = append(messages,
-				           fmt.Sprintf("%s: Only generic PDF file", t)) 
 			} else {
 				// Due to importance formatted to stand out:
+				fmt.Printf("No PDF file at all for %s\n", t)
 				messages = append(messages,
-				           fmt.Sprintf("\n=!= %s: No PDF file\n", t)) 
+				           fmt.Sprintf("No PDF file at all for %s\n", t)) 
 			}
 		}
 	}

@@ -67,7 +67,7 @@ func main() {
 		messages = songbook.SongbookByList(listPath, pdPath, genPdPath, outPath)
 	}
 
-	fmt.Println("WARNINGS & IMPORTANT MESSAGES:")
+	fmt.Println("\nWARNINGS:")
 	for _, m := range messages {
 		fmt.Println(m)
 	}
