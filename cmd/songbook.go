@@ -67,9 +67,11 @@ func main() {
 		messages = songbook.SongbookByList(listPath, pdPath, genPdPath, outPath)
 	}
 
-	fmt.Println("\nWARNINGS:")
-	for _, m := range messages {
-		fmt.Println(m)
+	if len(messages) > 0 {
+		fmt.Println("\nNOTE:")
+		for _, m := range messages {
+			fmt.Println(m)
+		}
 	}
 
 }
@@ -100,26 +102,52 @@ DEFINING CONTENT AND ORDER
 The content (which pieces) and the order can be defined two ways:
 
  a) Songbook from a »Playlist«
-   Playlist
-   is a text file that lists one song title per line in the desired
-   order. Its filename must consist of minimum two hyphen-separated
-   parts and should end with the suffix ».txt«.
+
+   Playlists:
+   A Playlist is a text file that lists one song title per line in
+   the desired order. Its filename must consist of minimum two
+   hyphen-separated parts and should end with ».txt« as suffix.
    <Project>-<Context>[-...].txt
    <Project> is the name of the Project (band, orchestra).
    <Context> represents the purpose for this list, like a specific
    concert, tour, or time period. This part must also not be empty.
+
    Playlist entries:
    Just list the songs that should be included in the Songbook one
    song per line. The entry for a song does not need to match the
-   PDF filename exactly, but the title must be included in the PDF
-   filename. Spaces and non-word characters are ignored when matching
-   PDF filenames with playlist entries.
+   PDF filename exactly, but it must be included in the PDF filename.
+   Matching Playlist entries against PDF filenames is case-insensitive
+   and ignores spaces and non-alphanumeric character.
+   For example, the PDF file »BeautifulNoise-NeilDiamond-guitar.pdf«
+   will match a Playlist entry like »Beautiful Noise« or
+   »Beautiful Noise (Neil Diamond)«. Note that the Playlist entry
+   needs to be part of the filename, not vice versa.
+
+   Avoid amiguity:
+   When entering songs in a Playlist, make sure they point to only
+   one PDF file; otherwise your Songbook might not include what you
+   expect. You may have more versions of one song or separate PDF files
+   for different instruments. Thus, the Playlist entry needs to be
+   specific enough. If there are two files for Gershwin's »Summertime«,
+   like »Summertime-BigBrother.pdf« and »Summertime-Holiday.pdf«, a
+   Playlist entry like just »Summertime« is not clear, but for example
+   »Summertime (Holiday)« will be clear.
+   Also note that a Playlist entry like »Summertime (Billie Holiday)«
+   will not match any of the two PDF files: The system removes spaces
+   and non-alphanumeric characters from the Playlist entry and from all
+   filenames, downcases the results and then looks for a stripped
+   filename that includes the stripped Playlist entry,
+   »summertimebillieholiday«. Neither »summertimeholday.pdf« nor
+   »summertimebigbrother.pdf« includes this string, so there will be
+   no result, i.e. no PDF file for this song will go to the Songbook.
+
    Cross-Project PDF files:
    If no file in the Project Folder seems to match the name of the
    song title, the application looks for a match in a folder with
    generic sheet music, i.e. original versions that can be used in
    multiple Projects. If the file is taken from there, this is
-   indicated in the output of the run.
+   indicated in the output during the run.
+
    Comments:
    In case you want to add comments to your Playlist (or make the
    system temporarily ignoring individual entries in the Playlist),
@@ -135,7 +163,8 @@ The content (which pieces) and the order can be defined two ways:
    »File Naming and Localization«).
 
  b) Songbook by alphabet:
-   If you just want all the PDF files in a project folder, instead
+
+   If you just want all the PDF files in a Project Folder, instead
    of specifying a playlist, you just use the Project name followed
    by a hyphen and the three letters »abc«.
    Example: songbook CoolBand-abc
@@ -161,7 +190,15 @@ FILE NAMING AND LOCALIZATION
    individual PDF file for each piece in the repertoire of this
    ensemble.
 
-   Playlist Folder
+   Cross-Project Folder:
+   Under the Base Path you may create a folder that contains sheet
+   music which is (or might be) used in multiple projects. Usually
+   these are standard or original versions without project specific
+   modifications.
+   The default location and name for this folder is:
+   ~/sheetmusic/Original/
+
+   Playlist Folder:
    Also under the Base Path should be one folder called "playlists",
    which contains Playlist Files. We assume you want to keep the
    playlists for all Projects in this one Playlist folder, though
@@ -178,12 +215,16 @@ FILE NAMING AND LOCALIZATION
       ~/sheetmusic/TheKeltners/               (= Project Folder 1)
       ~/sheetmusic/TheKeltners/Shalala.pdf
       ~/sheetmusic/TheKeltners/Ohyeah-v2-2021.pdf
-      ~/sheetmusic/TheKeltners/Whatever-StatusQuo.pdf
+      ~/sheetmusic/TheKeltners/WhateverYouWant.pdf
       ...
       ~/sheetmusic/RockstarSummit_2025        (= Project Folder 2)
-      ~/sheetmusic/RockstarSummit_2025/opening.pdf
-      ~/sheetmusic/RockstarSummit_2025/WeSaluteYou-Malcolm.pdf
-      ~/sheetmusic/RockstarSummit_2025/TheBoxer-doubletime.pdf
+      ~/sheetmusic/RockstarSummit_2025/Opening-arrangement.pdf
+      ~/sheetmusic/RockstarSummit_2025/WeSaluteYou-Malcolm-guitar.pdf
+      ~/sheetmusic/RockstarSummit_2025/TheBoxer-guitar.pdf
+      ...
+      ~/sheetmusic/Original                   (= Cross-Project Folder)
+      ~/sheetmusic/Original/AutumnLeaves-LeadSheet.pdf
+      ~/sheetmusic/Original/Toto-Africa-Drums.pdf
       ...
       ~/sheetmusic/playlists/TheKeltners-shortSet2025.txt
       ~/sheetmusic/playlists/TheKeltners-fullSet2025.txt
@@ -192,6 +233,10 @@ FILE NAMING AND LOCALIZATION
    Call: songbook TheKeltners-shortSet2025.txt
       This will create a PDF with the songs as listed in the
       Playlist File named TheKeltners-shortSet2025.txt.
+      If a Playlist Entry is not included in Project Folder 1,
+      »~/sheetmusic/TheKeltners/«, the system will also look in the
+      Cross-Project Folder, »~/sheetmusic/Original«.
+
    Call: songbook TheKeltners-abc
       This will create a PDF with all songs in Project Folder 1,
       listed by alphabet.

@@ -20,7 +20,10 @@ import(
 // that will be taken out before matching a playlist entry (a title)
 // against a PDF filename to decide if that PDF file is the sheet
 // music for this title.
-var essenceRE = regexp.MustCompile(`\W`)
+// Characters not to be considered are everything except Latin letters
+// and (Arabic) digits. This leaves non-English letters in. To avoid
+// trouble with exotic digits we do not use \p{N} for numeric characters.
+var essenceRE = regexp.MustCompile(`[^\p{Latin}\d]`)
 
 // SongbookByList is core function 1/2:
 // It compiles a songbook with sheet music sorted by a playlist
@@ -168,8 +171,8 @@ func ReadPlaylist(path string) []string {
 // detected by the ".pdf" filename suffix.
 func GetAllPdNames(path string) []string {
 	var fns []string // List (Slice) of filenames to return
-	// Regexp: Start with letter
-	re := regexp.MustCompile(`(?i)\A[A-Za-z0-9][-\w]*\.pdf`)
+	// re := regexp.MustCompile(`(?i)\A[A-Za-z0-9][-\w]*\.pdf`)
+	re := regexp.MustCompile(`(?i)\A[\p{L}\p{N}][\p{L}\p{N}_\\-]*\.pdf`)
 	des, err := os.ReadDir(path) // DirectoryEntrys
 	if (err != nil) {
 		log.Fatal(err)
@@ -194,6 +197,7 @@ func GetAllPdNames(path string) []string {
 // are prepared by the essence function to make the check case
 // insensitive and to ignore special characters etc.
 func fileMatch(filename, title string) bool {
+	// fmt.Printf("Comparing %s with %s\n", essence(filename), essence(title)) // Debug
 	return strings.Contains(essence(filename), essence(title))
 }
 
